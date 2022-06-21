@@ -1,0 +1,22 @@
+<script
+  src="https://code.jquery.com/jquery-3.6.0.slim.min.js"
+  integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI="
+  crossorigin="anonymous"></script>
+  
+<script>
+
+$("#stat-boxplot-methods > code")
+  .html(function() {
+    const trimmed = this.textContent.replace(/\s{2,3}/ig, "")
+   return(trimmed.replace(/compute_\w+/ig, "<i style='background-color:greenyellow;color:black;'>$&</i>"))
+  })
+
+$("span.fu")
+    .filter(function() {
+        return(this.textContent.match(/ggtrace/i))
+    })
+    .each(function() {
+        this.innerHTML = this.textContent.replace(/(?<=_)[^_]+/ig, "<i class='workflow-action'>$&</i>")
+    })
+
+</script>

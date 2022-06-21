@@ -12,13 +12,11 @@ author: |
   </p>
 format:
   revealjs:
+    include-in-header: "meta.html"
+    include-after-body: "highlighting.html"
     logo: "img/userlogo.png"
     footer: "https://yjunechoe.github.io/ggtrace-user2022"
     theme: [default, style.css]
-    twitter-card:
-      creator: "@yjunechoe"
-      card-style: summary_large_image
-      image: "img/card.png"
     code-line-numbers: false
     slide-number: true
     execute:
@@ -31,11 +29,6 @@ format:
 ---
 
 ## Penguin flipper lengths
-
-<script
-  src="https://code.jquery.com/jquery-3.6.0.slim.min.js"
-  integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI="
-  crossorigin="anonymous"></script>
 
 ```{r setup}
 #| include: false
@@ -1049,23 +1042,3 @@ Beyond workflow functions, `{ggtrace}` also provides:
 - Low-level control with `ggtrace()` and `with_ggtrace()`
 
 [https://yjunechoe.github.io/ggtrace/]()
-
-<!-- Custom highlighting -->
-
-<script>
-
-$("#stat-boxplot-methods > code")
-  .html(function() {
-    const trimmed = this.textContent.replace(/\s{2,3}/ig, "")
-   return(trimmed.replace(/compute_\w+/ig, "<i style='background-color:greenyellow;color:black;'>$&</i>"))
-  })
-
-$("span.fu")
-    .filter(function() {
-        return(this.textContent.match(/ggtrace/i))
-    })
-    .each(function() {
-        this.innerHTML = this.textContent.replace(/(?<=_)[^_]+/ig, "<i class='workflow-action'>$&</i>")
-    })
-
-</script>
