@@ -1,0 +1,1120 @@
+---
+title: Stepping into `{ggplot2}` internals with `{ggtrace}`
+author: |
+  <p>June Choe</p>
+  <a style='color:black;' href='https://twitter.com/yjunechoe'>@yjunechoe</a>
+format:
+  revealjs:
+    logo: "https://user2022.r-project.org/img/userlogo.png"
+    footer: "yjunechoe.github.io"
+    code-line-numbers: false
+    slide-number: true
+    execute:
+      echo: true
+    knitr:
+      opts_chunk: 
+        dev: "ragg_png"
+        R.options:
+          width: 100
+---
+
+## Penguin flipper lengths
+
+<style>
+  #title-slide h1.title {
+    font-size: 70px;
+    text-align: left;
+    margin: auto auto 50px auto;
+  }
+  code {
+    font-size: 0.9em;
+  }
+  .power-user {
+    animation: power-user-move 3s infinite;
+  }
+  .blocked-user {
+    animation: blocked-user-move 1s infinite;
+    animation-timing-function: cubic-bezier(0.8, 0, 0.7, 0.25)
+  }
+  .workflow-action {
+    font-weight: bold;
+    font-size: 1.15em;
+  }
+  @keyframes blocked-user-move {
+    from {
+      top: 60px;
+    }
+    30% {
+      top: 110px;
+    }
+    to {
+      top: 60px;
+    }
+  }
+  @keyframes power-user-move {
+    from {
+      top: 100px;
+    }
+    50% {
+      top: 280px;
+    }
+    to {
+      top: 100px;
+    }
+  }
+</style>
+
+<script
+  src="https://code.jquery.com/jquery-3.6.0.slim.min.js"
+  integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI="
+  crossorigin="anonymous"></script>
+
+```{r setup}
+#| include: false
+library(ggtrace)        # v0.5.1
+library(ggplot2)        # v3.3.6
+library(dplyr)          # v1.0.9
+library(grid)           # v4.2.0
+library(palmerpenguins) # v0.1.0
+library(htmltools)      # v0.5.2
+
+ragg_png <- function(..., res = 150) {
+  ragg::agg_png(..., res = res, units = "in")
+}
+
+p <- palmerpenguins::penguins %>% 
+  filter(!is.na(flipper_length_mm)) %>% 
+  ggplot(aes(species, flipper_length_mm)) +
+  geom_boxplot(aes(fill = species), width = .7)
+```
+
+<img class="absolute" style="top:52%;left:50%;transform:translate(-50%, -50%);width:1000px;" src="img/boxplot.png">
+
+
+## User-facing code vs. Internals
+
+![](img/iceberg.png){.absolute}
+
+![](img/technologist.png){.absolute top=60 left=360 width=200}
+
+. . .
+
+
+![](img/boxplot_data.png){.absolute top=100 right=100 width=300}
+
+![](img/boxplot_code.png){.absolute top=100 left=30 width=300}
+
+. . .
+
+
+![](img/cogs.png){.absolute bottom=190 left=380 width=200}
+
+. . .
+
+["outliers"]{.absolute left="10%" bottom="30%"}
+
+["quartiles"]{.absolute right="12%" bottom="20%"}
+
+```{r boxplots-floating}
+#| echo: false
+div(lapply(1:3, function(i) {
+  img(
+    src = paste0("img/boxplot_", i, ".png"),
+    class = "absolute",
+    style = paste0(
+      "width:400px;left:", c(65, 5, 45)[i],
+      "%;bottom:", c(35, -5, 10)[i], "%;",
+      "transform:rotate(", c(-30, 50, 100)[i], "deg);"
+    )
+  )
+}))
+```
+
+. . .
+
+<div class="absolute" style="
+    top: 290px;
+    width: 1000px;
+    height: 420px;
+    background-color: rgb(0,0,0,.6);
+"></div>
+
+## User-facing code vs. Internals
+
+![](img/iceberg.png){.absolute}
+
+![](img/technologist.png){.absolute .blocked-user left=360 width=200}
+
+![](img/boxplot_data.png){.absolute top=100 right=100 width=300}
+
+![](img/boxplot_code.png){.absolute top=100 left=30 width=300}
+
+![](img/cogs.png){.absolute bottom=190 left=380 width=200}
+
+["outliers"]{.absolute left="10%" bottom="30%"}
+
+["quartiles"]{.absolute right="12%" bottom="20%"}
+
+```{r boxplots-floating}
+#| echo: false
+```
+
+<div class="absolute" style="
+    top: 290px;
+    width: 1000px;
+    height: 420px;
+    background-color: rgb(0,0,0,.6);
+"></div>
+
+## `{ggtrace}`
+
+Let's interact with ggplot internals!
+
+![](img/ggtrace_logo.png){.absolute bottom=0 left="25%"}
+
+
+## Outline
+
+. . .
+
+1) Introduction to ggplot internals
+
+- Just knowing `{dplyr}` can get you very far!
+
+. . .
+
+2) A showcase of `{ggtrace}` features
+
+- Gives users finer control over the plots they make
+
+- Helps developers debug custom internal functions
+
+
+## Thinking like ggplot internals {auto-animate=true background-color="#EBEBEB80"}
+
+```{r}
+#| eval: false
+#| include: false
+# Code to get boxplot graphical components
+p_adelie_boxplot <- ggtrace_inspect_return(p, GeomBoxplot$draw_group)
+p_adelie_boxplot_components <- list(
+  outliers = p_adelie_boxplot$children[[1]],
+  whiskers = p_adelie_boxplot$children[[2]],
+  box = p_adelie_boxplot$children[[3]]$children[[1]],
+  bar = p_adelie_boxplot$children[[3]]$children[[2]]
+)
+p_adelie_boxplot_clipped_vp <- viewport(
+  yscale = unclass(p_adelie_boxplot_components$outliers$y) + c(-.05, .05),
+  xscale = unlist(p_adelie_boxplot_components$bar[c("x0", "x1")]) + c(-.05, .05)
+)
+lapply(seq_along(p_adelie_boxplot_components), function(i) {
+  ggsave(
+    filename = paste0("img/boxplot_components_", names(p_adelie_boxplot_components)[i], ".png"),
+    plot = editGrob(p_adelie_boxplot_components[[i]], vp = p_adelie_boxplot_clipped_vp),
+    width = diff(p_adelie_boxplot_clipped_vp$xscale),
+    height = diff(p_adelie_boxplot_clipped_vp$yscale),
+    scale = 5, bg = "transparent"
+  )
+})
+```
+
+```{r}
+#| echo: false
+boxplot_component_imgs <- dir("img", pattern = "boxplot_components", full.names = TRUE)[c(3, 4, 2, 1)]
+div(
+  lapply(1:4, function(i) {
+    img(src = boxplot_component_imgs[i],
+        class = "absolute", `data-id` = paste0("boxplot-component-", i),
+        style = "height:550px;left:400px")
+  })
+)
+```
+
+. . .
+
+```{r boxplot-component-text-static}
+#| echo: false
+div(
+  style = "font-size: 0.7em",
+  lapply(1:7, function(i) {
+    span(c("outliers", "whisker", "3rd quartile", "median",
+           "1st quartile", "whisker", "outliers")[i],
+         `data-id` = paste0("boxplot-component-text-static", i),
+         class = "absolute",
+         style = paste0("left:720px;top:",
+                        c(120, 230, 310, 370, 420, 500, 600)[i], "px")
+    )
+  })
+)
+```
+
+```{r}
+#| echo: false
+div(
+  style = "font-size: 0.7em",
+  lapply(1:7, function(i) {
+    span(c("outliers", "whisker", "3rd quartile", "median",
+           "1st quartile", "whisker", "outliers")[i],
+         `data-id` = paste0("boxplot-component-text-", i),
+         class = "absolute",
+         style = paste0("left:720px;top:",
+                        c(120, 230, 310, 370, 420, 500, 600)[i], "px")
+    )
+  })
+)
+```
+
+. . .
+
+<div class="absolute" style='top:90px;left:700px;width:300px;height:550px;border:4px solid steelblue'>
+<strong class="absolute" style="bottom:0%;right:5%;color:#2c5271">Stat</strong>
+</div>
+
+## Thinking like ggplot internals {auto-animate=true auto-animate-duration=2 background-color="#EBEBEB80"}
+
+```{r boxplot-component-imgs-last}
+#| echo: false
+boxplot_component_imgs <- dir("img", pattern = "boxplot_components", full.names = TRUE)[c(3, 4, 2, 1)]
+div(
+  lapply(1:4, function(i) {
+    img(src = boxplot_component_imgs[i],
+        class = "absolute", `data-id` = paste0("boxplot-component-", i),
+        style = paste0("height:550px;left:", c(400, 370, 250, 50)[i], "px"))
+  })
+)
+```
+
+```{r boxplot-component-text-static}
+#| echo: false
+```
+
+```{r}
+#| echo: false
+div(
+  style = "font-size: 0.7em",
+  lapply(1:7, function(i) {
+    span(c("outliers", "whisker", "3rd quartile", "median",
+           "1st quartile", "whisker", "outliers")[i],
+         `data-id` = paste0("boxplot-component-text-", i),
+         class = "absolute",
+         style = paste0("left:", c(550, 520, 310, 135)[c(1:4, 3:1)][i], "px;top:",
+                        c(120, 230, 290, 350, 440, 500, 600)[i], "px")
+    )
+  })
+)
+```
+
+<div class="absolute" style='top:90px;left:700px;width:300px;height:550px;border:4px solid steelblue'>
+<strong class="absolute" style="bottom:0%;right:5%;color:#2c5271">Stat</strong>
+</div>
+
+<div class="absolute" style='top:90px;right:380px;width:600px;height:550px;border:4px solid darkorange'>
+  <strong class="absolute" style="transform:translate(20px,480px);color:#cc7000">Geom</strong>
+</div>
+
+<!-- ## Thinking like ggplot internals {background-color="#EBEBEB80"} -->
+
+<!-- ```{r boxplot-component-imgs-last} -->
+<!-- #| echo: false -->
+<!-- ``` -->
+
+<!-- ```{r boxplot-component-text-static} -->
+<!-- #| echo: false -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- #| echo: false -->
+<!-- div( -->
+<!--   style = "font-size: 0.7em", -->
+<!--   lapply(1:7, function(i) { -->
+<!--     span(c("y", "y0, y1", "y1", "y", -->
+<!--            "y0", "y0, y1", "y")[i], -->
+<!--          `data-id` = paste0("boxplot-component-text-", i), -->
+<!--          class = "absolute", -->
+<!--          style = paste0("left:", c(550, 520, 370, 170)[c(1:4, 3:1)][i], "px;top:", -->
+<!--                         c(120, 230, 290, 350, 440, 500, 600)[i], "px") -->
+<!--     ) -->
+<!--   }) -->
+<!-- ) -->
+<!-- ``` -->
+
+<!-- <div class="absolute" style='top:90px;left:700px;width:300px;height:550px;border:4px solid steelblue'> -->
+<!-- <strong class="absolute" style="bottom:0%;right:5%;color:#2c5271">Stat</strong> -->
+<!-- </div> -->
+
+<!-- <div class="absolute" style='top:90px;right:380px;width:600px;height:550px;border:4px solid darkorange'> -->
+<!--   <strong class="absolute" style="transform:translate(20px,480px);color:#cc7000">Geom</strong> -->
+<!-- </div> -->
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+```{r}
+#| echo: false
+code_hl <- "background-color: #619CFF; color: white; border: 5px solid #619CFF;"
+print_stat_geom_methods <- function(x, hl = 0) {
+  x <- match.arg(x, c("stat", "geom"))
+  x_id <- c("stat" = "stat-compute-method-", "geom" = "geom-draw-method-")[x]
+  x_nm <- c("stat" = "Stat$compute_", "geom" = "Geom$draw_")[x]
+  div(
+    style = "margin:-10px 0px;",
+    lapply(1:3, function(i) {
+      p(
+        style = paste0("margin-left:", i * 100 - 100, "px;"),
+        code(
+          style = if (i == hl) code_hl,
+          paste0(x_nm, c("layer", "panel", "group"), "()")[i],
+        )
+      )
+    })
+  )
+}
+```
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("stat")
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("geom")
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+HTML(gsub("Stat", tags$i("Stat", style = code_hl), print_stat_geom_methods("stat")))
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+HTML(gsub("Geom", tags$i("Geom", style = code_hl), print_stat_geom_methods("geom")))
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+HTML(gsub("\\$", tags$i("$", style = code_hl), print_stat_geom_methods("stat")))
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+HTML(gsub("\\$", tags$i("$", style = code_hl), print_stat_geom_methods("geom")))
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+HTML(gsub("(_\\w+)", tags$i("\\1", style = code_hl), print_stat_geom_methods("stat")))
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+HTML(gsub("(_\\w+)", tags$i("\\1", style = code_hl), print_stat_geom_methods("geom")))
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("stat", 1)
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("geom")
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("stat", 2)
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("geom")
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("stat", 3)
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("geom")
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("stat")
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("geom", 1)
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("stat")
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("geom", 2)
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("stat")
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("geom", 3)
+```
+
+## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
+
+Statistical transformation (**compute**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("stat")
+```
+
+Geometric transformation (**draw**)
+
+```{r}
+#| echo: false
+print_stat_geom_methods("geom")
+```
+
+::: aside
+The choice of specific `Stat` and `Geom` ggprotos are layer-specific
+:::
+
+## `{dplyr}` all the way down {auto-animate=true auto-animate-duration=.5 background-color="#EBEBEB80"}
+
+<p></p>
+
+```{r}
+#| code-line-numbers: true
+#| eval: false
+ggplot_output <- data_input %>%
+  
+  ... # aesthetic mappings, x-y scale transformations, etc.
+
+  group_by(layer) %>% 
+    group_by(panel) %>%
+      group_by(group) %>% 
+        summarize( ... ) %>% 
+    
+  ... # constructing plot layout with {grid} and {gtable}, etc.
+  
+```
+
+## `{dplyr}` all the way down {auto-animate=true auto-animate-duration=.5 background-color="#EBEBEB80"}
+
+<p></p>
+
+```{r, dplyr-all-the-way-down}
+#| code-line-numbers: true
+#| eval: false
+ggplot_output <- data_input %>%
+  
+  ... # aesthetic mappings, x-y scale transformations, etc.
+
+  group_by(layer) %>% 
+    mutate( ... ) %>% 
+    group_by(panel) %>%
+      mutate( ... ) %>% 
+      group_by(group) %>% 
+        mutate( ... ) %>% 
+        summarize( ... ) %>% 
+        mutate( ... ) %>% 
+      mutate( ... ) %>% 
+    mutate( ... ) %>% 
+    
+  ... # constructing plot layout with {grid} and {gtable}, etc.
+  
+```
+
+## `{dplyr}` all the way down {background-color="#EBEBEB80"}
+
+```{r, dplyr-all-the-way-down}
+#| code-line-numbers: "6-14"
+#| eval: false
+```
+
+`_layer()` functions called once per layer
+
+## `{dplyr}` all the way down {background-color="#EBEBEB80"}
+
+```{r, dplyr-all-the-way-down}
+#| code-line-numbers: "8-13"
+#| eval: false
+```
+
+`_panel()` functions called once per panel (a.k.a. "facet")
+
+## `{dplyr}` all the way down {background-color="#EBEBEB80"}
+
+```{r, dplyr-all-the-way-down}
+#| code-line-numbers: "10-12"
+#| eval: false
+```
+
+`_group()` functions called once per group
+
+## Motivating idea {background-color="#EBEBEB80"}
+
+```{r, dplyr-all-the-way-down}
+#| code-line-numbers: true
+#| eval: false
+```
+
+What might we want to do with this beast of a pipeline?
+
+## Motivating idea {background-color="#EBEBEB80"}
+
+```{r}
+#| code-line-numbers: "9"
+#| eval: false
+ggplot_output <- data_input %>%
+  
+  ... # aesthetic mappings, x-y scale transformations, etc.
+
+  group_by(layer) %>% 
+    mutate( ... ) %>% 
+    group_by(panel) %>%
+      mutate( ... ) %>% 
+      # <-- What does the data for 2nd layer, 3rd panel look like at this point?
+      group_by(group) %>% 
+        mutate( ... ) %>% 
+        summarize( ... ) %>% 
+        mutate( ... ) %>% 
+      mutate( ... ) %>% 
+    mutate( ... ) %>% 
+    
+  ... # constructing plot layout with {grid} and {gtable}, etc.
+  
+```
+
+## Motivating idea {background-color="#EBEBEB80"}
+
+```{r}
+#| code-line-numbers: "12"
+#| eval: false
+ggplot_output <- data_input %>%
+  
+  ... # aesthetic mappings, x-y scale transformations, etc.
+
+  group_by(layer) %>% 
+    mutate( ... ) %>% 
+    group_by(panel) %>%
+      mutate( ... ) %>% 
+      group_by(group) %>% 
+        mutate( ... ) %>% 
+        summarize( ... ) %>% 
+        my_fun() %>% # <-- What consequence does this have on the pipeline?
+        mutate( ... ) %>% 
+      mutate( ... ) %>% 
+    mutate( ... ) %>% 
+    
+  ... # constructing plot layout with {grid} and {gtable}, etc.
+  
+```
+
+## Inaccessibility of ggproto methods  {background-color="#EBEBEB80"}
+
+They are essentially functions, but look weird:
+
+```{r}
+class(StatBoxplot$compute_group)
+typeof(StatBoxplot$compute_group)
+```
+
+You can't do any useful things with them interactively:
+
+```{r}
+formals(StatBoxplot$compute_group)
+body(StatBoxplot$compute_group)
+```
+
+Familiar debugging tools (ex: `debug()`) fail out of the box
+
+## Introducing `{ggtrace}`
+
+<p style="margin:30px 0px;">
+Toolkit to **Inspect**, **Capture**, and **Highjack** the internals
+</p>
+
+. . .
+
+Workflow functions `ggtrace_{action}_{value}()`:
+
+<div style="margin-left:100px">
+
+- `x`: The ggplot object
+    
+- `method`: The ggproto method
+    
+- `cond`: When to interact with the method^[If `cond` is integer *N*, targets the *N*th time `method` is called]
+
+</div>
+
+<p style="margin-top:20px">
+"While rendering `x`, interact with `method` when `cond` is met"
+</p>
+
+## Our boxplot
+
+```{r}
+p <- palmerpenguins::penguins %>% 
+  filter(!is.na(flipper_length_mm)) %>% 
+  ggplot(aes(species, flipper_length_mm)) +
+  geom_boxplot(aes(fill = species), width = .7)
+p
+```
+
+## Inspect `compute_layer()`
+
+```{r}
+#| eval: false
+compute_layer_input <- ggtrace_inspect_args(x = p, method = Stat$compute_layer, cond = 1)
+```
+
+## Inspect `compute_layer()`
+
+```{r}
+#| eval: false
+compute_layer_input <- ggtrace_inspect_args(x = p, method = Stat$compute_layer)
+```
+
+## Inspect `compute_layer()`
+
+```{r}
+compute_layer_input <- ggtrace_inspect_args(x = p, method = Stat$compute_layer)
+names(compute_layer_input)
+```
+
+. . .
+
+<br>
+
+```{r}
+compute_layer_input$params
+```
+
+## Inspect `compute_layer()`
+
+```{r}
+compute_layer_input$data %>% tibble() %>% print(n = 3)
+```
+
+. . .
+
+```{r}
+compute_layer_input$data %>% count(PANEL, group)
+```
+
+. . .
+
+```{r R.options=list(width=150)}
+ggtrace_inspect_return(x = p, method = Stat$compute_layer)
+```
+
+
+## `Stat` split-apply-combine design
+
+```{r}
+ggtrace_inspect_n(p, Stat$compute_layer)
+```
+
+<div style='margin-left:100px;margin-bottom:10px'>
+```{r}
+ggtrace_inspect_n(p, Stat$compute_panel)
+```
+</div>
+
+<div style='margin-left:200px'>
+```{r}
+ggtrace_inspect_n(p, StatBoxplot$compute_group)
+```
+</div>
+
+. . .
+
+<br>
+
+```{r R.options=list(width=150)}
+#| attr-output: "id=stat-boxplot-methods"
+ggtrace::get_method_inheritance( geom_boxplot()$stat )
+```
+
+## `Stat` split-apply-combine inputs
+
+. . .
+
+```{r}
+ggtrace_inspect_args(p, Stat$compute_layer)$data %>% head(2)
+```
+
+. . .
+
+<div style='margin-left:100px;margin-bottom:10px'>
+```{r}
+#| eval: false
+ggtrace_inspect_args(p, Stat$compute_panel)$data # same as `compute_layer()`
+```
+</div>
+
+. . .
+
+<div style='margin-left:200px'>
+```{r}
+ggtrace_inspect_args(p, StatBoxplot$compute_group, 1)$data %>% head(2)
+```
+
+```{r}
+ggtrace_inspect_args(p, StatBoxplot$compute_group, 2)$data %>% head(2)
+```
+
+```{r}
+ggtrace_inspect_args(p, StatBoxplot$compute_group, 3)$data %>% head(2)
+```
+</div>
+
+## `Stat` split-apply-combine outputs
+
+<div style='margin-left:200px'>
+```{r}
+ggtrace_inspect_return(p, StatBoxplot$compute_group, 1)
+```
+
+```{r}
+ggtrace_inspect_return(p, StatBoxplot$compute_group, 2)
+```
+
+```{r}
+ggtrace_inspect_return(p, StatBoxplot$compute_group, 3)
+```
+</div>
+
+. . .
+
+<div style='margin-left:100px;margin-bottom:10px'>
+```{r R.options=list(width=150)}
+ggtrace_inspect_return(p, Stat$compute_panel)
+```
+</div>
+
+. . .
+
+```{r}
+#| eval: false
+ggtrace_inspect_return(p, Stat$compute_layer)  # same as `compute_panel()`
+```
+
+
+## Capture `compute_group()`
+
+```{r}
+#| attr-source: "style='margin-bottom:10px'"
+compute_group1_fn <- ggtrace_capture_fn(
+  x = p, method = StatBoxplot$compute_group, cond = 1
+)
+```
+
+. . .
+
+```{r}
+compute_group1_fn()
+```
+
+. . .
+
+<p style="margin-top:30px"></p>
+
+::: {.columns}
+
+::: {.column width="40%"}
+
+![](img/compute_group1_fn_autocomplete.png)
+:::
+
+::: {.column width="60%"}
+
+```{r}
+compute_group1_fn(coef = 0.8)$outliers
+```
+
+```{r R.options=list(width=50)}
+# v3.3.0 `geom_boxplot(orientation = "y")`
+compute_group1_fn(flipped_aes = TRUE) %>% names()
+```
+
+:::
+
+:::
+
+
+## Highjack args
+
+```{r}
+ggtrace_highjack_args(
+  x = p, method = StatBoxplot$compute_group, cond = 1,
+  values = list(coef = 0.8) # list of new argument values
+)
+```
+
+## Highjack args (multi-cond)
+
+```{r}
+ggtrace_highjack_args(
+  p, StatBoxplot$compute_group, cond = c(2, 3),
+  values = list(width = .2)
+)
+```
+
+## Highjack return
+
+```{r}
+#| attr-source: "style='margin-bottom:10px'"
+modified_compute_group1 <- ggtrace_inspect_return(p, StatBoxplot$compute_group, 1) %>%
+  mutate(ymin = 100)
+```
+
+```{r}
+ggtrace_highjack_return(p, StatBoxplot$compute_group, 1,
+  value = modified_compute_group1
+)
+```
+
+## Highjack return - `returnValue()`
+
+```{r}
+ggtrace_highjack_return(p, StatBoxplot$compute_group,
+  cond = c(2, 3),
+  value = quote({
+    returnValue() %>% mutate(ymin = 100, ymax = 300)
+}))
+```
+
+## Inspect `draw_group()`
+
+. . .
+
+```{r}
+ggtrace_inspect_args(p, GeomBoxplot$draw_group, 1)$data
+```
+. . .
+
+<br>
+
+<div style="margin-bottom:10px;">
+```{r}
+draw_group1_output <- ggtrace_inspect_return(p, GeomBoxplot$draw_group, 1)
+```
+</div>
+
+```{r}
+class(draw_group1_output)
+typeof(draw_group1_output)
+```
+
+What can we do with these `"grob"`s?
+
+. . .
+
+```{r}
+library(grid)
+```
+
+
+## Highjack `draw_group()`
+
+```{r}
+#| eval: false
+modified_group1_output <- grid::editGrob(draw_group1_output, gp = grid::gpar(alpha = .5))
+``` 
+
+## Highjack `draw_group()`
+
+```{r}
+modified_group1_output <- grid::editGrob(draw_group1_output, gp = grid::gpar(alpha = .5))
+ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
+  value = modified_group1_output
+)
+``` 
+
+## Highjack `draw_group()`
+
+```{r}
+ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
+  value = quote({
+    editGrob(returnValue(), gp = gpar(alpha = .5))
+}))
+```
+
+## `gTree`s - a collection of `grob`s
+
+```{r}
+draw_group1_output
+```
+
+```{r}
+class( draw_group1_output )
+```
+
+. . .
+
+```{r}
+grid::grid.ls(draw_group1_output)
+```
+
+. . .
+
+<div style="width:101%">
+```{r}
+draw_group1_output$children
+```
+</div>
+
+```{r}
+draw_group1_output$children[[3]]$children
+```
+
+
+## Highjack `draw_group()`
+
+```{r}
+ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
+  value = quote({
+    out <- returnValue()
+    out$children[3] <- NULL
+    out
+}))
+```
+
+## Highjack `draw_group()`
+
+```{r}
+#| out-width: "650px"
+ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
+  value = quote({
+    out <- returnValue()
+    out$children[[2]] <- editGrob(out$children[[2]], gp = gpar(lty = 2, lwd = 5))
+    out
+}))
+```
+
+## Highjack `draw_group()` - hide
+
+```{r}
+ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
+  value = ggplot2::zeroGrob()
+)
+```
+
+## For `{grid}` power users
+
+```{r}
+ggtrace_highjack_return(p + facet_wrap(~ year), Geom$draw_panel, cond = TRUE,
+  value = quote({
+    y_pos <- .25 * ._counter_ #<- internal counter tracking nth time the method is called
+    grobTree( circleGrob(y = y_pos, gp = gpar(fill = linearGradient())), # R >= 4.1
+              editGrob(returnValue(), vp = viewport(clip = circleGrob(y = y_pos))) )  }))
+```
+
+## ... and much more!
+
+Workflow functions also work for:
+
+  - Other ggprotos, unexported functions, S3/S4 methods
+  
+  - Functions and methods from extension packages
+
+Beyond workflow functions, `{ggtrace}` also provides:
+
+- **Interactive debugging** with `ggedit()` and `ggdebug()`
+
+- Low-level control with `ggtrace()` and `with_ggtrace()`
+
+[https://yjunechoe.github.io/ggtrace/]()
+
+
+<!-- Custom highlighting -->
+
+<script>
+
+$("#stat-boxplot-methods > code")
+  .html(function() {
+    const trimmed = this.textContent.replace(/\s{2,3}/ig, "")
+   return(trimmed.replace(/compute_\w+/ig, "<i style='background-color:greenyellow;color:black;'>$&</i>"))
+  })
+
+$("span.fu")
+    .filter(function() {
+        return(this.textContent.match(/ggtrace/i))
+    })
+    .each(function() {
+        this.innerHTML = this.textContent.replace(/(?<=_)[^_]+/ig, "<i class='workflow-action'>$&</i>")
+    })
+
+</script>
