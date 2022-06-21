@@ -14,6 +14,7 @@ format:
   revealjs:
     logo: "https://user2022.r-project.org/img/userlogo.png"
     footer: "https://yjunechoe.github.io/ggtrace-user2022"
+    theme: [default, style.css]
     code-line-numbers: false
     slide-number: true
     execute:
@@ -26,39 +27,6 @@ format:
 ---
 
 ## Penguin flipper lengths
-
-<style>
-  #title-slide h1.title {
-    font-size: 70px;
-    text-align: left;
-    margin: auto auto 50px auto;
-  }
-  code {
-    font-size: 0.9em;
-  }
-  .power-user {
-    animation: power-user-move 3s infinite;
-  }
-  .blocked-user {
-    animation: blocked-user-move 1s infinite;
-    animation-timing-function: cubic-bezier(0.8, 0, 0.7, 0.25)
-  }
-  .workflow-action {
-    font-weight: bold;
-    font-size: 1.15em;
-  }
-  @keyframes blocked-user-move {
-    from {
-      top: 60px;
-    }
-    30% {
-      top: 110px;
-    }
-    to {
-      top: 60px;
-    }
-  }
-</style>
 
 <script
   src="https://code.jquery.com/jquery-3.6.0.slim.min.js"
@@ -186,9 +154,13 @@ Let's interact with ggplot internals!
 - Helps developers debug custom internal functions
 
 
+## {background-color="#EBEBEB80"}
+
+[`{ggplot2}` internals]{.centered-slide-text}
+
 ## Thinking like ggplot internals {auto-animate=true background-color="#EBEBEB80"}
 
-```{r}
+```{r boxplot-components-breakdown}
 #| eval: false
 #| include: false
 # Code to get boxplot graphical components
@@ -214,7 +186,7 @@ lapply(seq_along(p_adelie_boxplot_components), function(i) {
 })
 ```
 
-```{r}
+```{r boxplot-components-breakdown-load}
 #| echo: false
 boxplot_component_imgs <- dir("img", pattern = "boxplot_components", full.names = TRUE)[c(3, 4, 2, 1)]
 div(
@@ -244,7 +216,7 @@ div(
 )
 ```
 
-```{r}
+```{r boxplot-component-text-start}
 #| echo: false
 div(
   style = "font-size: 0.7em",
@@ -284,7 +256,7 @@ div(
 #| echo: false
 ```
 
-```{r}
+```{r boxplot-component-text-end}
 #| echo: false
 div(
   style = "font-size: 0.7em",
@@ -308,43 +280,10 @@ div(
   <strong class="absolute" style="transform:translate(20px,480px);color:#cc7000">Geom</strong>
 </div>
 
-<!-- ## Thinking like ggplot internals {background-color="#EBEBEB80"} -->
-
-<!-- ```{r boxplot-component-imgs-last} -->
-<!-- #| echo: false -->
-<!-- ``` -->
-
-<!-- ```{r boxplot-component-text-static} -->
-<!-- #| echo: false -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- #| echo: false -->
-<!-- div( -->
-<!--   style = "font-size: 0.7em", -->
-<!--   lapply(1:7, function(i) { -->
-<!--     span(c("y", "y0, y1", "y1", "y", -->
-<!--            "y0", "y0, y1", "y")[i], -->
-<!--          `data-id` = paste0("boxplot-component-text-", i), -->
-<!--          class = "absolute", -->
-<!--          style = paste0("left:", c(550, 520, 370, 170)[c(1:4, 3:1)][i], "px;top:", -->
-<!--                         c(120, 230, 290, 350, 440, 500, 600)[i], "px") -->
-<!--     ) -->
-<!--   }) -->
-<!-- ) -->
-<!-- ``` -->
-
-<!-- <div class="absolute" style='top:90px;left:700px;width:300px;height:550px;border:4px solid steelblue'> -->
-<!-- <strong class="absolute" style="bottom:0%;right:5%;color:#2c5271">Stat</strong> -->
-<!-- </div> -->
-
-<!-- <div class="absolute" style='top:90px;right:380px;width:600px;height:550px;border:4px solid darkorange'> -->
-<!--   <strong class="absolute" style="transform:translate(20px,480px);color:#cc7000">Geom</strong> -->
-<!-- </div> -->
 
 ## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
 
-```{r}
+```{r compute-draw-families}
 #| echo: false
 code_hl <- "background-color: #619CFF; color: white; border: 5px solid #619CFF;"
 print_stat_geom_methods <- function(x, hl = 0) {
@@ -368,30 +307,31 @@ print_stat_geom_methods <- function(x, hl = 0) {
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-no-hl}
 #| echo: false
 print_stat_geom_methods("stat")
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-no-hl}
 #| echo: false
 print_stat_geom_methods("geom")
 ```
+
 
 ## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-ggproto-hl}
 #| echo: false
 HTML(gsub("Stat", tags$i("Stat", style = code_hl), print_stat_geom_methods("stat")))
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-ggproto-hl}
 #| echo: false
 HTML(gsub("Geom", tags$i("Geom", style = code_hl), print_stat_geom_methods("geom")))
 ```
@@ -400,14 +340,14 @@ HTML(gsub("Geom", tags$i("Geom", style = code_hl), print_stat_geom_methods("geom
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-dolar-hl}
 #| echo: false
 HTML(gsub("\\$", tags$i("$", style = code_hl), print_stat_geom_methods("stat")))
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-dolar-hl}
 #| echo: false
 HTML(gsub("\\$", tags$i("$", style = code_hl), print_stat_geom_methods("geom")))
 ```
@@ -416,14 +356,14 @@ HTML(gsub("\\$", tags$i("$", style = code_hl), print_stat_geom_methods("geom")))
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-split-hl}
 #| echo: false
 HTML(gsub("(_\\w+)", tags$i("\\1", style = code_hl), print_stat_geom_methods("stat")))
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-split-hl}
 #| echo: false
 HTML(gsub("(_\\w+)", tags$i("\\1", style = code_hl), print_stat_geom_methods("geom")))
 ```
@@ -432,62 +372,58 @@ HTML(gsub("(_\\w+)", tags$i("\\1", style = code_hl), print_stat_geom_methods("ge
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-hl-layer}
 #| echo: false
 print_stat_geom_methods("stat", 1)
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-no-hl}
 #| echo: false
-print_stat_geom_methods("geom")
 ```
 
 ## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-hl-panel}
 #| echo: false
 print_stat_geom_methods("stat", 2)
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-no-hl}
 #| echo: false
-print_stat_geom_methods("geom")
 ```
 
 ## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-hl-group}
 #| echo: false
 print_stat_geom_methods("stat", 3)
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-no-hl}
 #| echo: false
-print_stat_geom_methods("geom")
 ```
 
 ## `{ggplot2}` Stat and Geom methods {background-color="#EBEBEB80"}
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-no-hl}
 #| echo: false
-print_stat_geom_methods("stat")
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-hl-layer}
 #| echo: false
 print_stat_geom_methods("geom", 1)
 ```
@@ -496,14 +432,13 @@ print_stat_geom_methods("geom", 1)
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-no-hl}
 #| echo: false
-print_stat_geom_methods("stat")
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-hl-panel}
 #| echo: false
 print_stat_geom_methods("geom", 2)
 ```
@@ -512,14 +447,13 @@ print_stat_geom_methods("geom", 2)
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-no-hl}
 #| echo: false
-print_stat_geom_methods("stat")
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-hl-group}
 #| echo: false
 print_stat_geom_methods("geom", 3)
 ```
@@ -528,27 +462,26 @@ print_stat_geom_methods("geom", 3)
 
 Statistical transformation (**compute**)
 
-```{r}
+```{r stat-no-hl}
 #| echo: false
-print_stat_geom_methods("stat")
 ```
 
 Geometric transformation (**draw**)
 
-```{r}
+```{r geom-no-hl}
 #| echo: false
-print_stat_geom_methods("geom")
 ```
 
 ::: aside
 The choice of specific `Stat` and `Geom` ggprotos are layer-specific
 :::
 
+
 ## `{dplyr}` all the way down {auto-animate=true auto-animate-duration=.5 background-color="#EBEBEB80"}
 
 <p></p>
 
-```{r}
+```{r pipeline-essential}
 #| code-line-numbers: true
 #| eval: false
 ggplot_output <- data_input %>%
@@ -568,7 +501,7 @@ ggplot_output <- data_input %>%
 
 <p></p>
 
-```{r, dplyr-all-the-way-down}
+```{r pipeline-expanded}
 #| code-line-numbers: true
 #| eval: false
 ggplot_output <- data_input %>%
@@ -592,7 +525,7 @@ ggplot_output <- data_input %>%
 
 ## `{dplyr}` all the way down {background-color="#EBEBEB80"}
 
-```{r, dplyr-all-the-way-down}
+```{r pipeline-expanded}
 #| code-line-numbers: "6-14"
 #| eval: false
 ```
@@ -601,7 +534,7 @@ ggplot_output <- data_input %>%
 
 ## `{dplyr}` all the way down {background-color="#EBEBEB80"}
 
-```{r, dplyr-all-the-way-down}
+```{r pipeline-expanded}
 #| code-line-numbers: "8-13"
 #| eval: false
 ```
@@ -610,7 +543,7 @@ ggplot_output <- data_input %>%
 
 ## `{dplyr}` all the way down {background-color="#EBEBEB80"}
 
-```{r, dplyr-all-the-way-down}
+```{r pipeline-expanded}
 #| code-line-numbers: "10-12"
 #| eval: false
 ```
@@ -619,7 +552,7 @@ ggplot_output <- data_input %>%
 
 ## Motivating idea {background-color="#EBEBEB80"}
 
-```{r, dplyr-all-the-way-down}
+```{r pipeline-expanded}
 #| code-line-numbers: true
 #| eval: false
 ```
@@ -628,7 +561,7 @@ What might we want to do with this beast of a pipeline?
 
 ## Motivating idea {background-color="#EBEBEB80"}
 
-```{r}
+```{r pipeline-expanded-inspect}
 #| code-line-numbers: "9"
 #| eval: false
 ggplot_output <- data_input %>%
@@ -653,7 +586,7 @@ ggplot_output <- data_input %>%
 
 ## Motivating idea {background-color="#EBEBEB80"}
 
-```{r}
+```{r pipeline-expanded-highjack}
 #| code-line-numbers: "12"
 #| eval: false
 ggplot_output <- data_input %>%
@@ -676,23 +609,28 @@ ggplot_output <- data_input %>%
   
 ```
 
-## Inaccessibility of ggproto methods  {background-color="#EBEBEB80"}
+
+## Inaccessibility of ggproto methods {background-color="#EBEBEB80"}
 
 They are essentially functions, but look weird:
 
-```{r}
+```{r ggproto-foreignness}
 class(StatBoxplot$compute_group)
 typeof(StatBoxplot$compute_group)
 ```
 
 You can't do any useful things with them interactively:
 
-```{r}
+```{r ggproto-inaccessibility}
 formals(StatBoxplot$compute_group)
 body(StatBoxplot$compute_group)
 ```
 
 Familiar debugging tools (ex: `debug()`) fail out of the box
+
+## {background-color="#9684D650"}
+
+[Introducing `{ggtrace}`]{.centered-slide-text}
 
 ## Introducing `{ggtrace}`
 
@@ -720,7 +658,7 @@ Workflow functions `ggtrace_{action}_{value}()`:
 
 ## Our boxplot
 
-```{r}
+```{r boxplot-code}
 p <- palmerpenguins::penguins %>% 
   filter(!is.na(flipper_length_mm)) %>% 
   ggplot(aes(species, flipper_length_mm)) +
@@ -728,23 +666,28 @@ p <- palmerpenguins::penguins %>%
 p
 ```
 
+
+## {background-color="#9684D650"}
+
+[`Inspect` workflow]{.centered-slide-text}
+
 ## Inspect `compute_layer()`
 
-```{r}
+```{r inspect-args-compute-layer}
 #| eval: false
 compute_layer_input <- ggtrace_inspect_args(x = p, method = Stat$compute_layer, cond = 1)
 ```
 
 ## Inspect `compute_layer()`
 
-```{r}
+```{r inspect-args-compute-layer-no-cond}
 #| eval: false
 compute_layer_input <- ggtrace_inspect_args(x = p, method = Stat$compute_layer)
 ```
 
 ## Inspect `compute_layer()`
 
-```{r}
+```{r compute-layer-args}
 compute_layer_input <- ggtrace_inspect_args(x = p, method = Stat$compute_layer)
 names(compute_layer_input)
 ```
@@ -753,43 +696,43 @@ names(compute_layer_input)
 
 <br>
 
-```{r}
+```{r compute-layer-args-params}
 compute_layer_input$params
 ```
 
 ## Inspect `compute_layer()`
 
-```{r}
+```{r compute-layer-args-data-tibble}
 compute_layer_input$data %>% tibble() %>% print(n = 3)
 ```
 
 . . .
 
-```{r}
+```{r compute-layer-info-panel-group}
 compute_layer_input$data %>% count(PANEL, group)
 ```
 
 . . .
 
-```{r R.options=list(width=150)}
+```{r inspect-return-compute-layer, R.options=list(width=150)}
 ggtrace_inspect_return(x = p, method = Stat$compute_layer)
 ```
 
 
 ## `Stat` split-apply-combine design
 
-```{r}
+```{r inspect-n-compute-layer}
 ggtrace_inspect_n(p, Stat$compute_layer)
 ```
 
 <div style='margin-left:100px;margin-bottom:10px'>
-```{r}
+```{r inspect-n-compute-panel}
 ggtrace_inspect_n(p, Stat$compute_panel)
 ```
 </div>
 
 <div style='margin-left:200px'>
-```{r}
+```{r inspect-n-compute-group}
 ggtrace_inspect_n(p, StatBoxplot$compute_group)
 ```
 </div>
@@ -798,7 +741,7 @@ ggtrace_inspect_n(p, StatBoxplot$compute_group)
 
 <br>
 
-```{r R.options=list(width=150)}
+```{r ggproto-method-inheritance, R.options=list(width=150)}
 #| attr-output: "id=stat-boxplot-methods"
 ggtrace::get_method_inheritance( geom_boxplot()$stat )
 ```
@@ -807,14 +750,14 @@ ggtrace::get_method_inheritance( geom_boxplot()$stat )
 
 . . .
 
-```{r}
+```{r compute-layer-args-data}
 ggtrace_inspect_args(p, Stat$compute_layer)$data %>% head(2)
 ```
 
 . . .
 
 <div style='margin-left:100px;margin-bottom:10px'>
-```{r}
+```{r compute-panel-args}
 #| eval: false
 ggtrace_inspect_args(p, Stat$compute_panel)$data # same as `compute_layer()`
 ```
@@ -823,15 +766,15 @@ ggtrace_inspect_args(p, Stat$compute_panel)$data # same as `compute_layer()`
 . . .
 
 <div style='margin-left:200px'>
-```{r}
+```{r compute-group-args-1}
 ggtrace_inspect_args(p, StatBoxplot$compute_group, 1)$data %>% head(2)
 ```
 
-```{r}
+```{r compute-group-args-2}
 ggtrace_inspect_args(p, StatBoxplot$compute_group, 2)$data %>% head(2)
 ```
 
-```{r}
+```{r compute-group-args-3}
 ggtrace_inspect_args(p, StatBoxplot$compute_group, 3)$data %>% head(2)
 ```
 </div>
@@ -839,15 +782,15 @@ ggtrace_inspect_args(p, StatBoxplot$compute_group, 3)$data %>% head(2)
 ## `Stat` split-apply-combine outputs
 
 <div style='margin-left:200px'>
-```{r}
+```{r compute-group-return-1}
 ggtrace_inspect_return(p, StatBoxplot$compute_group, 1)
 ```
 
-```{r}
+```{r compute-group-return-2}
 ggtrace_inspect_return(p, StatBoxplot$compute_group, 2)
 ```
 
-```{r}
+```{r compute-group-return-3}
 ggtrace_inspect_return(p, StatBoxplot$compute_group, 3)
 ```
 </div>
@@ -855,22 +798,26 @@ ggtrace_inspect_return(p, StatBoxplot$compute_group, 3)
 . . .
 
 <div style='margin-left:100px;margin-bottom:10px'>
-```{r R.options=list(width=150)}
+```{r compute-panel-return, R.options=list(width=150)}
 ggtrace_inspect_return(p, Stat$compute_panel)
 ```
 </div>
 
 . . .
 
-```{r}
+```{r compute-layer-return}
 #| eval: false
 ggtrace_inspect_return(p, Stat$compute_layer)  # same as `compute_panel()`
 ```
 
 
+## {background-color="#9684D650"}
+
+[`Capture` workflow]{.centered-slide-text}
+
 ## Capture `compute_group()`
 
-```{r}
+```{r capture-fn}
 #| attr-source: "style='margin-bottom:10px'"
 compute_group1_fn <- ggtrace_capture_fn(
   x = p, method = StatBoxplot$compute_group, cond = 1
@@ -879,7 +826,7 @@ compute_group1_fn <- ggtrace_capture_fn(
 
 . . .
 
-```{r}
+```{r captured-fn}
 compute_group1_fn()
 ```
 
@@ -896,11 +843,11 @@ compute_group1_fn()
 
 ::: {.column width="60%"}
 
-```{r}
+```{r captured-fn-demo-coef}
 compute_group1_fn(coef = 0.8)$outliers
 ```
 
-```{r R.options=list(width=50)}
+```{r captured-fn-demo-flipped-aes, R.options=list(width=50)}
 # v3.3.0 `geom_boxplot(orientation = "y")`
 compute_group1_fn(flipped_aes = TRUE) %>% names()
 ```
@@ -909,10 +856,13 @@ compute_group1_fn(flipped_aes = TRUE) %>% names()
 
 :::
 
+## {background-color="#9684D650"}
+
+[`Highjack` workflow]{.centered-slide-text}
 
 ## Highjack args
 
-```{r}
+```{r highjack-args-single}
 ggtrace_highjack_args(
   x = p, method = StatBoxplot$compute_group, cond = 1,
   values = list(coef = 0.8) # list of new argument values
@@ -921,7 +871,7 @@ ggtrace_highjack_args(
 
 ## Highjack args (multi-cond)
 
-```{r}
+```{r highjack-args-multiple}
 ggtrace_highjack_args(
   p, StatBoxplot$compute_group, cond = c(2, 3),
   values = list(width = .2)
@@ -930,13 +880,13 @@ ggtrace_highjack_args(
 
 ## Highjack return
 
-```{r}
+```{r highjack-return-manual-setup}
 #| attr-source: "style='margin-bottom:10px'"
 modified_compute_group1 <- ggtrace_inspect_return(p, StatBoxplot$compute_group, 1) %>%
   mutate(ymin = 100)
 ```
 
-```{r}
+```{r highjack-return-manual-execute}
 ggtrace_highjack_return(p, StatBoxplot$compute_group, 1,
   value = modified_compute_group1
 )
@@ -944,7 +894,7 @@ ggtrace_highjack_return(p, StatBoxplot$compute_group, 1,
 
 ## Highjack return - `returnValue()`
 
-```{r}
+```{r highjack-return-programmatic}
 ggtrace_highjack_return(p, StatBoxplot$compute_group,
   cond = c(2, 3),
   value = quote({
@@ -952,11 +902,12 @@ ggtrace_highjack_return(p, StatBoxplot$compute_group,
 }))
 ```
 
+
 ## Inspect `draw_group()`
 
 . . .
 
-```{r}
+```{r inspect-args-draw-group}
 ggtrace_inspect_args(p, GeomBoxplot$draw_group, 1)$data
 ```
 . . .
@@ -964,12 +915,12 @@ ggtrace_inspect_args(p, GeomBoxplot$draw_group, 1)$data
 <br>
 
 <div style="margin-bottom:10px;">
-```{r}
+```{r inspect-return-draw-group}
 draw_group1_output <- ggtrace_inspect_return(p, GeomBoxplot$draw_group, 1)
 ```
 </div>
 
-```{r}
+```{r inspect-grob}
 class(draw_group1_output)
 typeof(draw_group1_output)
 ```
@@ -978,21 +929,21 @@ What can we do with these `"grob"`s?
 
 . . .
 
-```{r}
+```{r load-pkg-grid}
 library(grid)
 ```
 
 
 ## Highjack `draw_group()`
 
-```{r}
+```{r edit-grob-setup}
 #| eval: false
 modified_group1_output <- grid::editGrob(draw_group1_output, gp = grid::gpar(alpha = .5))
 ``` 
 
 ## Highjack `draw_group()`
 
-```{r}
+```{r edit-grob-execute}
 modified_group1_output <- grid::editGrob(draw_group1_output, gp = grid::gpar(alpha = .5))
 ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
   value = modified_group1_output
@@ -1001,7 +952,7 @@ ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
 
 ## Highjack `draw_group()`
 
-```{r}
+```{r edit-grob-programmatic}
 ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
   value = quote({
     editGrob(returnValue(), gp = gpar(alpha = .5))
@@ -1010,36 +961,36 @@ ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
 
 ## `gTree`s - a collection of `grob`s
 
-```{r}
+```{r print-gtree}
 draw_group1_output
 ```
 
-```{r}
+```{r inspect-gtree}
 class( draw_group1_output )
 ```
 
 . . .
 
-```{r}
+```{r expand-gtree}
 grid::grid.ls(draw_group1_output)
 ```
 
 . . .
 
 <div style="width:101%">
-```{r}
+```{r gtree-children-level-1}
 draw_group1_output$children
 ```
 </div>
 
-```{r}
+```{r gtree-children-level-2}
 draw_group1_output$children[[3]]$children
 ```
 
 
 ## Highjack `draw_group()`
 
-```{r}
+```{r highjack-return-component-hide}
 ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
   value = quote({
     out <- returnValue()
@@ -1050,7 +1001,7 @@ ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
 
 ## Highjack `draw_group()`
 
-```{r}
+```{r highjack-return-component-edit}
 #| out-width: "650px"
 ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
   value = quote({
@@ -1062,7 +1013,7 @@ ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
 
 ## Highjack `draw_group()` - hide
 
-```{r}
+```{r highjack-return-hide}
 ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
   value = ggplot2::zeroGrob()
 )
@@ -1070,13 +1021,14 @@ ggtrace_highjack_return(p, GeomBoxplot$draw_group, 1,
 
 ## For `{grid}` power users
 
-```{r}
+```{r highjack-return-grid}
 ggtrace_highjack_return(p + facet_wrap(~ year), Geom$draw_panel, cond = TRUE,
   value = quote({
     y_pos <- .25 * ._counter_ #<- internal counter tracking nth time the method is called
     grobTree( circleGrob(y = y_pos, gp = gpar(fill = linearGradient())), # R >= 4.1
               editGrob(returnValue(), vp = viewport(clip = circleGrob(y = y_pos))) )  }))
 ```
+
 
 ## ... and much more!
 
@@ -1093,7 +1045,6 @@ Beyond workflow functions, `{ggtrace}` also provides:
 - Low-level control with `ggtrace()` and `with_ggtrace()`
 
 [https://yjunechoe.github.io/ggtrace/]()
-
 
 <!-- Custom highlighting -->
 
