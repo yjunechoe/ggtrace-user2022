@@ -12,9 +12,13 @@ author: |
   </p>
 format:
   revealjs:
-    logo: "https://user2022.r-project.org/img/userlogo.png"
+    logo: "img/userlogo.png"
     footer: "https://yjunechoe.github.io/ggtrace-user2022"
     theme: [default, style.css]
+    twitter-card:
+      creator: "@yjunechoe"
+      card-style: summary_large_image
+      image: "img/card.png"
     code-line-numbers: false
     slide-number: true
     execute:
