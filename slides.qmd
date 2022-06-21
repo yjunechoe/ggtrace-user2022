@@ -51,17 +51,6 @@ format:
       top: 60px;
     }
   }
-  @keyframes power-user-move {
-    from {
-      top: 100px;
-    }
-    50% {
-      top: 280px;
-    }
-    to {
-      top: 100px;
-    }
-  }
 </style>
 
 <script
