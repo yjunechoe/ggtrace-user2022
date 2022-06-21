@@ -658,7 +658,7 @@ Workflow functions `ggtrace_{action}_{value}()`:
 ```{r boxplot-code}
 p <- palmerpenguins::penguins %>% 
   filter(!is.na(flipper_length_mm)) %>% 
-  ggplot(aes(species, flipper_length_mm)) +
+  ggplot(aes(x = species, y = flipper_length_mm)) +
   geom_boxplot(aes(fill = species), width = .7)
 p
 ```
