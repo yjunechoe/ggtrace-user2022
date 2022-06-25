@@ -6,8 +6,8 @@ Links:
 
 - Talk recording: TBD
 
-- Slides: [https://yjunechoe.github.io/ggtrace-user2022/]()
+- Slides: [https://yjunechoe.github.io/ggtrace-user2022/](https://yjunechoe.github.io/ggtrace-user2022/)
 
-- Package website: [https://yjunechoe.github.io/ggtrace/]()
+- Package website: [https://yjunechoe.github.io/ggtrace/](https://yjunechoe.github.io/ggtrace/)
 
-- Package repo: [https://github.com/yjunechoe/ggtrace/]()
+- Package repo: [https://github.com/yjunechoe/ggtrace/](https://github.com/yjunechoe/ggtrace/)
