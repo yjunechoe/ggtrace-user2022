@@ -4,7 +4,7 @@ Slides for [useR! 2022](https://user2022.r-project.org/) talk "Stepping into `gg
 
 Links:
 
-- Talk recording: TBD
+- Talk recording: [https://www.youtube.com/watch?v=2JX8zu4QxMg&t=2959s](https://www.youtube.com/watch?v=2JX8zu4QxMg&t=2959s)
 
 - Slides: [https://yjunechoe.github.io/ggtrace-user2022/](https://yjunechoe.github.io/ggtrace-user2022/)
 
